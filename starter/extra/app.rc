@@ -1,0 +1,28 @@
+#include <windows.h>
+
+1 RT_MANIFEST "app.manifest"
+1 ICON "app.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION             1,0,0,0
+PRODUCTVERSION          1,0,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments",         "Starter for Clash for Desktop."
+            VALUE "CompanyName",      "Kr328"
+            VALUE "FileDescription",  "Clash for Desktop"
+            VALUE "FileVersion",      "V1.0.0.0"
+            VALUE "InternalName",     "Clash for Desktop"
+            VALUE "OriginalFilename", "clash-multiplatform.exe"
+            VALUE "ProductName",      "Clash for Desktop"
+            VALUE "ProductVersion",	  "V1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

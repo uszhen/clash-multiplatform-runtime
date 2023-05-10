@@ -1,0 +1,35 @@
+[package]
+name = "starter"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+opt-level = "s"
+debug = false
+strip = true
+debug-assertions = false
+overflow-checks = false
+lto = true
+panic = "abort"
+
+[build-dependencies]
+embed-resource = "2.1"
+
+[dependencies]
+cstr = "0.2"
+which = "4.4"
+jni-sys = "0.3"
+clap = { version = "4.2", features = ["derive"] }
+zip = "0.6"
+
+[dependencies.windows-sys]
+version = "0.48"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_Storage_FileSystem",
+]
