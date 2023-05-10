@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use std::{error::Error, path::Path, ptr::null_mut};
+use std::{error::Error, io::Write, path::Path, ptr::null_mut};
 
 use clap::Parser;
 use cstr::cstr;
@@ -17,6 +17,9 @@ use crate::{
 #[cfg(windows)]
 mod win32;
 
+#[cfg(target_os = "linux")]
+mod linux;
+
 mod dirs;
 mod metadata;
 mod options;
@@ -31,10 +34,19 @@ fn run_app(options: &Options) -> Result<(), Box<dyn Error>> {
     let metadata = resolve_app_metadata(&classes_jar).map_err(|e| e.with_message("Resolve app metadata"))?;
     let parameters = StartupParameters::new(options, &metadata).map_err(|e| e.with_message("Resolve startup parameters"))?;
 
-    _ = win32::redirect::redirect_standard_output_to_file(&Path::new(&parameters.base_directory).join("app.log"));
+    #[cfg(windows)]
+    win32::redirect::redirect_standard_output_to_file(&Path::new(&parameters.base_directory).join("app.log")).ok();
+
+    #[cfg(target_os = "linux")]
+    linux::redirect::redirect_standard_output_to_file(&Path::new(&parameters.base_directory).join("app.log")).ok();
 
     let classpath_opt = format!("-Djava.class.path={}", classes_jar.to_string_without_extend_length_mark());
+
+    #[cfg(windows)]
     let runtime = win32::jvm::load_jvm(&app_dir, &[classpath_opt.as_str()]).map_err(|e| e.with_message("Load JavaRuntime"))?;
+
+    #[cfg(target_os = "linux")]
+    let runtime = linux::jvm::load_jvm(&app_dir, &[classpath_opt.as_str()]).map_err(|e| e.with_message("Load JavaRuntime"))?;
 
     let c_main = jcall!(runtime.env, FindClass, cstr!("com/github/kr328/clash/MainKt").as_ptr());
     if c_main == null_mut() {
@@ -76,6 +88,10 @@ fn main() {
     let options = Options::parse();
 
     if let Err(err) = run_app(&options) {
+        #[cfg(windows)]
         win32::ui::show_error_message(&err.to_string());
+
+        #[cfg(target_os = "linux")]
+        std::io::stderr().write_all(err.to_string().as_bytes()).ok();
     }
 }

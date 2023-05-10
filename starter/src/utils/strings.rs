@@ -12,6 +12,6 @@ impl PathExt for Path {
         return ret.strip_prefix("\\\\?\\").unwrap_or(&ret).to_owned();
 
         #[cfg(not(windows))]
-        return ret;
+        return ret.to_string();
     }
 }
