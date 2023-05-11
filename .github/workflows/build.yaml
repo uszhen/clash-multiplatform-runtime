@@ -1,0 +1,58 @@
+on:
+  workflow_dispatch: {}
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build_windows_amd64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install Tools
+        run: choco install --yes zip
+      - name: Build
+        run: .\build.bat
+      - name: Rename Artifact
+        run: mv bundle.zip clash-multiplatform-runtime-windows-amd64.zip
+      - name: Publish
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: clash-multiplatform-runtime-windows-amd64.zip
+  build_linux_amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Build
+        run: ./build.sh
+      - name: Rename Artifiact
+        run: mv bundle.zip clash-multiplatform-runtime-linux-amd64.zip
+      - name: Publish
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: clash-multiplatform-runtime-linux-amd64.zip
