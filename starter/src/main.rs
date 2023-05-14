@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use std::{error::Error, io::Write, path::Path, ptr::null_mut};
+use std::{error::Error, fs::File, io::Write, path::Path, ptr::null_mut};
 
 use clap::Parser;
 use cstr::cstr;
@@ -8,6 +8,7 @@ use jni_sys::JNI_TRUE;
 
 use crate::{
     dirs::current_app_dir,
+    logging::redirect_pipe_logfile,
     metadata::resolve_app_metadata,
     options::Options,
     startup::StartupParameters,
@@ -21,6 +22,7 @@ mod win32;
 mod linux;
 
 mod dirs;
+mod logging;
 mod metadata;
 mod options;
 mod startup;
@@ -35,11 +37,36 @@ fn run_app(options: &Options) -> Result<(), Box<dyn Error>> {
     let metadata = resolve_app_metadata(&classes_jar).map_err(|e| e.with_message("Resolve app metadata"))?;
     let parameters = StartupParameters::new(options, &metadata).map_err(|e| e.with_message("Resolve startup parameters"))?;
 
+    let (reader, writer) = os_pipe::pipe()?;
+    let redirector = redirect_pipe_logfile(reader, &Path::new(&parameters.base_directory));
+
     #[cfg(windows)]
-    win32::redirect::redirect_standard_output_to_file(&Path::new(&parameters.base_directory).join("app.log")).ok();
+    {
+        use std::os::windows::io::{AsRawHandle, IntoRawHandle};
+        use win32::redirect::*;
+
+        let _ = set_standard_input_output(
+            StandardInputOutput::Input,
+            open_null_device(File::options().read(true)).into_raw_handle(),
+        );
+
+        let _ = set_standard_input_output(StandardInputOutput::Output, writer.as_raw_handle());
+        let _ = set_standard_input_output(StandardInputOutput::Error, writer.as_raw_handle());
+    }
 
     #[cfg(target_os = "linux")]
-    linux::redirect::redirect_standard_output_to_file(&Path::new(&parameters.base_directory).join("app.log")).ok();
+    {
+        use linux::redirect::*;
+        use std::os::unix::io::{AsRawFd, IntoRawFd};
+
+        let _ = set_standard_input_output(
+            StandardInputOutput::Input,
+            open_null_device(File::options().read(true)).into_raw_fd(),
+        );
+
+        let _ = set_standard_input_output(StandardInputOutput::Output, writer.as_raw_fd());
+        let _ = set_standard_input_output(StandardInputOutput::Error, writer.as_raw_fd());
+    }
 
     let classpath_opt = format!("-Djava.class.path={}", classes_jar.to_string_without_extend_length_mark());
     let max_heap_opt = format!("-Xmx{}m", MAX_HEAP_USAGE_MB);
@@ -84,6 +111,10 @@ fn run_app(options: &Options) -> Result<(), Box<dyn Error>> {
 
         return Err("Unexpected exception".into());
     }
+
+    drop(writer);
+
+    let _ = redirector.join();
 
     Ok(())
 }
