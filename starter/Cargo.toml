@@ -10,7 +10,7 @@ strip = true
 debug-assertions = false
 overflow-checks = false
 lto = true
-panic = "abort"
+panic = "unwind"
 
 [build-dependencies]
 embed-resource = "2.1"
