@@ -1,8 +1,7 @@
 use std::{
     error::Error,
-    io,
-    iter::once,
-    mem,
+    ffi::CString,
+    io, mem,
     os::raw::c_void,
     path::{Path, PathBuf},
     ptr::null_mut,
@@ -55,11 +54,8 @@ fn find_jvm_dll(app_root: &Path) -> Result<PathBuf, Box<dyn Error>> {
     Err("JavaRuntime not found".into())
 }
 
-fn build_jvm_init_args(args: &[&str]) -> (Vec<Vec<u8>>, Vec<JavaVMOption>, JavaVMInitArgs) {
-    let args = args
-        .iter()
-        .map(|s| (*s).chars().map(|c| c as u8).chain(once(0)).collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+fn build_jvm_init_args(args: &[&str]) -> (Vec<CString>, Vec<JavaVMOption>, JavaVMInitArgs) {
+    let args = args.iter().map(|s| CString::new(*s).unwrap()).collect::<Vec<_>>();
     let options = args
         .iter()
         .map(|a| JavaVMOption {
